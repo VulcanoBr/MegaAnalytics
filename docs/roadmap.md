@@ -1,14 +1,18 @@
+## [← Voltar ao README](../README.md)
+
+---
+
 # Roadmap
 
 ## Fases concluídas
 
-| Fase | Entrega |
-| --- | --- |
-| 1. Infraestrutura de dados | Tabelas `draws` e `import_batches` com restrições; importação incremental de XLSX com SHA-256, rejeição de divergências e lacunas, auditoria por lote; `HistoricalValidator`; telas de envio e histórico de importações |
-| 2. Dashboard estatístico | Indicadores gerais, frequência das dezenas (mapa de calor e rankings), maior atraso, comparativo entre períodos, pares/ímpares, soma e evolução histórica |
-| 3. Análise combinatória | Pares e ternos mais frequentes (com filtro por dezena) e repetição de dezenas entre concursos consecutivos |
-| 4. Distribuições | Dezenas consecutivas no mesmo concurso e distribuição por faixas numéricas, com valores esperados exatos |
-| 5. Concursos, relatórios e exportação | Consulta e detalhe de concursos, relatório por período, impressão/PDF e exportação CSV |
+| Fase                                  | Entrega                                                                                                                                                                                                                 |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Infraestrutura de dados            | Tabelas `draws` e `import_batches` com restrições; importação incremental de XLSX com SHA-256, rejeição de divergências e lacunas, auditoria por lote; `HistoricalValidator`; telas de envio e histórico de importações |
+| 2. Dashboard estatístico              | Indicadores gerais, frequência das dezenas (mapa de calor e rankings), maior atraso, comparativo entre períodos, pares/ímpares, soma e evolução histórica                                                               |
+| 3. Análise combinatória               | Pares e ternos mais frequentes (com filtro por dezena) e repetição de dezenas entre concursos consecutivos                                                                                                              |
+| 4. Distribuições                      | Dezenas consecutivas no mesmo concurso e distribuição por faixas numéricas, com valores esperados exatos                                                                                                                |
+| 5. Concursos, relatórios e exportação | Consulta e detalhe de concursos, relatório por período, impressão/PDF e exportação CSV                                                                                                                                  |
 
 Com isso, todos os módulos da especificação original estão implementados: importação, validação, análises estatísticas, dashboard, relatórios e exploração dos dados.
 

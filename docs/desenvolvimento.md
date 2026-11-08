@@ -1,3 +1,7 @@
+## [← Voltar ao README](../README.md)
+
+---
+
 # Guia de desenvolvimento
 
 ## Ambiente
@@ -39,13 +43,13 @@ bin/rails test test/services/mega_sena/stats     # apenas estatística
 bin/rails test test/controllers/dashboard_controller_test.rb
 ```
 
-| Pasta | O que cobre |
-| --- | --- |
-| `test/models` | `Draw`, `DrawFilter` |
-| `test/services/mega_sena` | Importador, validador histórico, cálculos estatísticos, combinatória, relatório e CSV |
-| `test/controllers` | Todas as telas: estado vazio, filtros, parâmetros inválidos, CSV |
-| `test/fixtures/files` | Planilhas `.xlsx` **fictícias** para os testes de importação (pequena, estendida, divergente e com lacuna) |
-| `test/support/draw_factory.rb` | `create_draw(numero, dezenas, date:)` para montar concursos nos testes |
+| Pasta                          | O que cobre                                                                                                |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `test/models`                  | `Draw`, `DrawFilter`                                                                                       |
+| `test/services/mega_sena`      | Importador, validador histórico, cálculos estatísticos, combinatória, relatório e CSV                      |
+| `test/controllers`             | Todas as telas: estado vazio, filtros, parâmetros inválidos, CSV                                           |
+| `test/fixtures/files`          | Planilhas `.xlsx` **fictícias** para os testes de importação (pequena, estendida, divergente e com lacuna) |
+| `test/support/draw_factory.rb` | `create_draw(numero, dezenas, date:)` para montar concursos nos testes                                     |
 
 Os valores esperados das análises combinatórias são testados contra resultados calculados à mão. As fórmulas de dezenas consecutivas, faixas vazias e perfis de faixas também foram conferidas por simulação (Monte Carlo) durante o desenvolvimento.
 
@@ -111,3 +115,9 @@ Com cerca de 3 mil concursos, todas as telas calculam em tempo aceitável sem ca
 - Não há autenticação: restrinja o acesso (rede local, VPN, proxy autenticado) antes de publicar.
 - O upload aceita somente `.xlsx` de até 20 MB e valida o conteúdo antes de gravar.
 - A gravação é transacional e protegida por restrições do banco.
+
+---
+
+## [← Voltar ao README](../README.md)
+
+---

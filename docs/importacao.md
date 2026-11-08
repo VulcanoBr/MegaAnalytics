@@ -1,3 +1,7 @@
+## [← Voltar ao README](../README.md)
+
+---
+
 # Importação e validação do histórico
 
 ## Fonte de dados
@@ -57,23 +61,23 @@ Etapas em detalhe:
 
 Os cabeçalhos são reconhecidos por nome (sem diferenciar maiúsculas, acentos ou espaços duplicados). Os campos **obrigatórios** são concurso, data e as seis dezenas.
 
-| Cabeçalho aceito | Coluna em `draws` | Obrigatório |
-| --- | --- | --- |
-| Concurso | `contest_number` | Sim |
-| Data do Sorteio | `draw_date` | Sim |
-| Bola1 … Bola6 | `number_1` … `number_6` | Sim |
-| Ganhadores 6 acertos | `winners_sena` | Não |
-| Cidade / UF | `city_uf` | Não |
-| Rateio 6 acertos | `prize_sena` | Não |
-| Ganhadores 5 acertos | `winners_quina` | Não |
-| Rateio 5 acertos | `prize_quina` | Não |
-| Ganhadores 4 acertos | `winners_quadra` | Não |
-| Rateio 4 acertos | `prize_quadra` | Não |
-| Acumulado 6 acertos | `accumulated_sena` | Não |
-| Arrecadação Total | `total_revenue` | Não |
-| Estimativa prêmio | `estimated_prize` | Não |
-| Acumulado Sorteio Especial Mega da Virada | `special_draw_accumulated` | Não |
-| Observação | `observation` | Não |
+| Cabeçalho aceito                          | Coluna em `draws`          | Obrigatório |
+| ----------------------------------------- | -------------------------- | ----------- |
+| Concurso                                  | `contest_number`           | Sim         |
+| Data do Sorteio                           | `draw_date`                | Sim         |
+| Bola1 … Bola6                             | `number_1` … `number_6`    | Sim         |
+| Ganhadores 6 acertos                      | `winners_sena`             | Não         |
+| Cidade / UF                               | `city_uf`                  | Não         |
+| Rateio 6 acertos                          | `prize_sena`               | Não         |
+| Ganhadores 5 acertos                      | `winners_quina`            | Não         |
+| Rateio 5 acertos                          | `prize_quina`              | Não         |
+| Ganhadores 4 acertos                      | `winners_quadra`           | Não         |
+| Rateio 4 acertos                          | `prize_quadra`             | Não         |
+| Acumulado 6 acertos                       | `accumulated_sena`         | Não         |
+| Arrecadação Total                         | `total_revenue`            | Não         |
+| Estimativa prêmio                         | `estimated_prize`          | Não         |
+| Acumulado Sorteio Especial Mega da Virada | `special_draw_accumulated` | Não         |
+| Observação                                | `observation`              | Não         |
 
 Se a Caixa mudar o título de alguma coluna, ajuste a constante `COLUMN_ALIASES` em `app/services/mega_sena/xlsx_importer.rb`.
 
@@ -88,12 +92,12 @@ Se a Caixa mudar o título de alguma coluna, ajuste a constante `COLUMN_ALIASES`
 
 Cada execução gera um registro de auditoria, inclusive as rejeitadas.
 
-| Status | Descrição |
-| --- | --- |
-| `pending` | Aguardando processamento |
-| `processing` | Em execução |
-| `succeeded` | Concluída |
-| `failed` | Rejeitada ou com falha |
+| Status       | Descrição                |
+| ------------ | ------------------------ |
+| `pending`    | Aguardando processamento |
+| `processing` | Em execução              |
+| `succeeded`  | Concluída                |
+| `failed`     | Rejeitada ou com falha   |
 
 Contadores: `total_rows`, `inserted_rows`, `skipped_rows`, `updated_rows` (sempre 0) e `error_rows`.
 
@@ -103,7 +107,9 @@ Lista JSON. O primeiro item traz a mensagem principal; os demais, os detalhes (l
 
 ```json
 [
-  { "message": "Divergência em 1 concurso(s) já importado(s). Nada foi gravado." },
+  {
+    "message": "Divergência em 1 concurso(s) já importado(s). Nada foi gravado."
+  },
   {
     "line": 4,
     "contest_number": 2,
@@ -118,25 +124,25 @@ Lista JSON. O primeiro item traz a mensagem principal; os demais, os detalhes (l
 
 O `MegaSena::HistoricalValidator` audita **toda a base**, não apenas o arquivo recém-importado, e roda automaticamente ao final de cada importação bem-sucedida. Também pode ser executado manualmente (veja [desenvolvimento.md](desenvolvimento.md)).
 
-| Verificação | Resultado |
-| --- | --- |
-| Seis dezenas presentes | erro |
-| Dezenas entre 01 e 60 | erro |
-| Dezenas repetidas no mesmo concurso | erro |
-| Data ausente ou no futuro | erro |
-| Ordem cronológica (data não pode regredir com o número do concurso) | erro |
-| Valores monetários negativos | erro |
-| Concursos duplicados | erro |
-| Lacunas na sequência de concursos | erro |
-| Histórico que não começa no concurso 1 | aviso |
+| Verificação                                                         | Resultado |
+| ------------------------------------------------------------------- | --------- |
+| Seis dezenas presentes                                              | erro      |
+| Dezenas entre 01 e 60                                               | erro      |
+| Dezenas repetidas no mesmo concurso                                 | erro      |
+| Data ausente ou no futuro                                           | erro      |
+| Ordem cronológica (data não pode regredir com o número do concurso) | erro      |
+| Valores monetários negativos                                        | erro      |
+| Concursos duplicados                                                | erro      |
+| Lacunas na sequência de concursos                                   | erro      |
+| Histórico que não começa no concurso 1                              | aviso     |
 
 Resultado geral:
 
-| Resultado | Descrição |
-| --- | --- |
-| `passed` | Nenhum erro ou aviso |
-| `warning` | Apenas avisos |
-| `failed` | Pelo menos um erro |
+| Resultado | Descrição            |
+| --------- | -------------------- |
+| `passed`  | Nenhum erro ou aviso |
+| `warning` | Apenas avisos        |
+| `failed`  | Pelo menos um erro   |
 
 Exemplo de `validation_report`:
 
@@ -158,29 +164,35 @@ Cada problema listado tem `code`, `contest_number` e `message`. São guardados n
 
 Importando uma planilha atualizada sobre uma base que já tinha 3.077 concursos:
 
-| Indicador | Resultado |
-| --- | ---: |
-| Concursos lidos | 3.080 |
-| Concursos existentes ignorados | 3.077 |
-| Novos concursos inseridos | 3 |
-| Concursos atualizados | 0 |
-| Erros | 0 |
-| Resultado da auditoria | `passed` |
+| Indicador                      | Resultado |
+| ------------------------------ | --------: |
+| Concursos lidos                |     3.080 |
+| Concursos existentes ignorados |     3.077 |
+| Novos concursos inseridos      |         3 |
+| Concursos atualizados          |         0 |
+| Erros                          |         0 |
+| Resultado da auditoria         |  `passed` |
 
 Após o processamento a base passa a conter 3.080 concursos, numerados de 1 a 3.080.
 
 ## Solução de problemas
 
-| Mensagem | Causa provável | O que fazer |
-| --- | --- | --- |
-| Formato inválido: envie um arquivo .xlsx. | Arquivo `.xls`, `.csv` ou outro formato | Salve/baixe a planilha como `.xlsx` |
-| Arquivo vazio. / Arquivo maior que 20 MB. | Arquivo corrompido ou grande demais | Baixe novamente a planilha oficial |
-| Este arquivo já foi importado com sucesso (importação #N). | Mesmo arquivo enviado duas vezes | Nada a fazer; envie uma planilha mais recente |
-| Colunas obrigatórias ausentes: … | Cabeçalhos diferentes do esperado | Confira a primeira linha da planilha ou ajuste `COLUMN_ALIASES` |
-| A planilha não contém dados. | Planilha sem linhas abaixo do cabeçalho | Verifique se os dados estão na primeira aba |
-| Planilha com N problema(s) de validação. Nada foi gravado. | Linhas com dezenas inválidas, datas ou valores incorretos | Veja `error_details` no lote para localizar a linha |
-| Divergência em N concurso(s) já importado(s). Nada foi gravado. | A fonte alterou dados de um concurso já gravado | Compare `existing` e `incoming` em `error_details`; decida se a fonte ou a base está correta antes de agir |
-| Lacunas na sequência de concursos. Nada foi gravado. | Planilha com concursos faltando | Obtenha a planilha completa |
-| Erro inesperado: … | Falha não prevista (ex.: banco indisponível) | Consulte os logs da aplicação |
+| Mensagem                                                        | Causa provável                                            | O que fazer                                                                                                |
+| --------------------------------------------------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Formato inválido: envie um arquivo .xlsx.                       | Arquivo `.xls`, `.csv` ou outro formato                   | Salve/baixe a planilha como `.xlsx`                                                                        |
+| Arquivo vazio. / Arquivo maior que 20 MB.                       | Arquivo corrompido ou grande demais                       | Baixe novamente a planilha oficial                                                                         |
+| Este arquivo já foi importado com sucesso (importação #N).      | Mesmo arquivo enviado duas vezes                          | Nada a fazer; envie uma planilha mais recente                                                              |
+| Colunas obrigatórias ausentes: …                                | Cabeçalhos diferentes do esperado                         | Confira a primeira linha da planilha ou ajuste `COLUMN_ALIASES`                                            |
+| A planilha não contém dados.                                    | Planilha sem linhas abaixo do cabeçalho                   | Verifique se os dados estão na primeira aba                                                                |
+| Planilha com N problema(s) de validação. Nada foi gravado.      | Linhas com dezenas inválidas, datas ou valores incorretos | Veja `error_details` no lote para localizar a linha                                                        |
+| Divergência em N concurso(s) já importado(s). Nada foi gravado. | A fonte alterou dados de um concurso já gravado           | Compare `existing` e `incoming` em `error_details`; decida se a fonte ou a base está correta antes de agir |
+| Lacunas na sequência de concursos. Nada foi gravado.            | Planilha com concursos faltando                           | Obtenha a planilha completa                                                                                |
+| Erro inesperado: …                                              | Falha não prevista (ex.: banco indisponível)              | Consulte os logs da aplicação                                                                              |
 
 Em qualquer rejeição, **nenhum concurso é gravado**: a base permanece exatamente como estava.
+
+---
+
+## [← Voltar ao README](../README.md)
+
+---
