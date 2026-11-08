@@ -1,0 +1,107 @@
+<div class="mx-auto w-full max-w-4xl p-6">
+  <%= render "shared/nav" %>
+  <%= render "shared/flash" %>
+
+  <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold">Concurso <%= @draw.contest_number %></h1>
+      <p class="text-gray-600"><%= l(@draw.draw_date, format: :long) %><%= " — #{@draw.city_uf}" if @draw.city_uf.present? %></p>
+    </div>
+    <div class="flex gap-2 text-sm print:hidden">
+      <% if @previous %>
+        <%= link_to "← ##{@previous.contest_number}", draw_path(@previous), class: "rounded border px-3 py-1.5 hover:bg-gray-50" %>
+      <% end %>
+      <%= link_to "Lista", draws_path, class: "rounded border px-3 py-1.5 hover:bg-gray-50" %>
+      <% if @next %>
+        <%= link_to "##{@next.contest_number} →", draw_path(@next), class: "rounded border px-3 py-1.5 hover:bg-gray-50" %>
+      <% end %>
+    </div>
+  </div>
+
+  <section class="mb-6 rounded border p-4">
+    <h2 class="mb-2 text-sm font-semibold text-gray-500">Dezenas sorteadas</h2>
+    <div class="flex flex-wrap gap-2">
+      <% @draw.numbers.each do |number| %>
+        <span class="inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600 text-lg font-bold text-white"><%= two_digits(number) %></span>
+      <% end %>
+    </div>
+    <% if @draw.numbers != @draw.sorted_numbers %>
+      <p class="mt-2 text-xs text-gray-500">Em ordem crescente: <%= @draw.sorted_numbers.map { |n| two_digits(n) }.join(" ") %></p>
+    <% end %>
+  </section>
+
+  <section class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4 text-sm">
+    <div class="rounded border p-4">
+      <div class="text-gray-500">Soma das dezenas</div>
+      <div class="text-2xl font-semibold"><%= @draw.numbers_sum %></div>
+    </div>
+    <div class="rounded border p-4">
+      <div class="text-gray-500">Pares / ímpares</div>
+      <div class="text-2xl font-semibold"><%= @draw.even_count %> / <%= 6 - @draw.even_count %></div>
+    </div>
+    <div class="rounded border p-4">
+      <div class="text-gray-500">Sequências</div>
+      <div class="font-mono text-lg font-semibold">
+        <%= @runs.any? ? @runs.map { |run| run.map { |n| two_digits(n) }.join("–") }.join(" · ") : "nenhuma" %>
+      </div>
+    </div>
+    <div class="rounded border p-4">
+      <div class="text-gray-500">Repetidas do anterior</div>
+      <div class="font-mono text-lg font-semibold">
+        <% if @repeated.nil? %>—<% elsif @repeated.empty? %>nenhuma<% else %><%= @repeated.map { |n| two_digits(n) }.join(" ") %><% end %>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-6 rounded border p-4">
+    <h2 class="mb-2 text-sm font-semibold text-gray-500">Dezenas por faixa</h2>
+    <div class="grid grid-cols-3 gap-2 text-center text-sm sm:grid-cols-6">
+      <% @band_counts.each_with_index do |count, index| %>
+        <div class="rounded <%= count.zero? ? 'bg-gray-50 text-gray-400' : 'bg-violet-50 text-violet-800' %> p-2">
+          <div class="font-mono text-xs"><%= format("%02d–%02d", index * 10 + 1, (index + 1) * 10) %></div>
+          <div class="text-lg font-semibold"><%= count %></div>
+        </div>
+      <% end %>
+    </div>
+  </section>
+
+  <section class="mb-6 overflow-x-auto rounded border">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 text-left text-gray-600">
+        <tr><th class="px-3 py-2">Faixa de prêmio</th><th class="px-3 py-2 text-right">Ganhadores</th><th class="px-3 py-2 text-right">Prêmio por ganhador</th></tr>
+      </thead>
+      <tbody class="divide-y">
+        <% [ [ "Sena (6 acertos)", @draw.winners_sena, @draw.prize_sena ],
+             [ "Quina (5 acertos)", @draw.winners_quina, @draw.prize_quina ],
+             [ "Quadra (4 acertos)", @draw.winners_quadra, @draw.prize_quadra ] ].each do |label, winners, prize| %>
+          <tr>
+            <td class="px-3 py-2 font-medium"><%= label %></td>
+            <td class="px-3 py-2 text-right tabular-nums"><%= winners.nil? ? "—" : number_with_delimiter(winners) %></td>
+            <td class="px-3 py-2 text-right tabular-nums"><%= winners.to_i.positive? ? money(prize) : "—" %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mb-6 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+    <div class="rounded border p-4">
+      <dl class="space-y-2">
+        <div class="flex justify-between"><dt class="text-gray-500">Arrecadação total</dt><dd class="font-medium"><%= money(@draw.total_revenue) %></dd></div>
+        <div class="flex justify-between"><dt class="text-gray-500">Acumulado da Sena</dt><dd class="font-medium"><%= money(@draw.accumulated_sena) %></dd></div>
+        <div class="flex justify-between"><dt class="text-gray-500">Estimativa do próximo prêmio</dt><dd class="font-medium"><%= money(@draw.estimated_prize) %></dd></div>
+        <div class="flex justify-between"><dt class="text-gray-500">Acumulado sorteio especial</dt><dd class="font-medium"><%= money(@draw.special_draw_accumulated) %></dd></div>
+      </dl>
+    </div>
+    <div class="rounded border p-4">
+      <dl class="space-y-2">
+        <div class="flex justify-between"><dt class="text-gray-500">Cidade / UF</dt><dd class="font-medium"><%= @draw.city_uf.presence || "—" %></dd></div>
+        <div class="flex justify-between"><dt class="text-gray-500">Observação</dt><dd class="font-medium"><%= @draw.observation.presence || "—" %></dd></div>
+        <% if @draw.import_batch %>
+          <div class="flex justify-between"><dt class="text-gray-500">Importado no lote</dt>
+            <dd><%= link_to "##{@draw.import_batch_id}", import_batch_path(@draw.import_batch), class: "font-medium text-emerald-700 underline" %></dd></div>
+        <% end %>
+      </dl>
+    </div>
+  </section>
+</div>

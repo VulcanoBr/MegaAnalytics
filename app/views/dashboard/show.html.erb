@@ -1,0 +1,191 @@
+<div class="mx-auto w-full max-w-6xl p-6">
+  <%= render "shared/nav" %>
+  <%= render "shared/flash" %>
+
+  <% if @all.empty? %>
+    <div class="rounded border border-dashed p-10 text-center">
+      <h1 class="mb-2 text-xl font-semibold">Ainda não há concursos cadastrados</h1>
+      <p class="mb-4 text-gray-600">Importe a planilha oficial da Caixa para ver o dashboard.</p>
+      <%= link_to "Nova importação", new_import_batch_path,
+            class: "rounded bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700" %>
+    </div>
+  <% else %>
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <h1 class="text-2xl font-bold">Dashboard estatístico</h1>
+      <div class="flex gap-1 text-sm" role="group" aria-label="Período">
+        <% DashboardController::WINDOWS.each_key do |key| %>
+          <%= link_to window_label(key),
+                dashboard_path(window: key, number: @selected_number, block: @block_size),
+                class: "rounded border px-3 py-1.5 #{key == @window_key ? 'border-emerald-600 bg-emerald-600 text-white' : 'text-gray-700 hover:bg-gray-50'}" %>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Indicadores gerais %>
+    <section class="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-5">
+      <div class="rounded border p-4">
+        <div class="text-sm text-gray-500">Concursos no histórico</div>
+        <div class="text-2xl font-semibold"><%= number_with_delimiter(@all.size) %></div>
+      </div>
+      <div class="rounded border p-4">
+        <div class="text-sm text-gray-500">Primeiro sorteio</div>
+        <div class="text-xl font-semibold"><%= l(@all.first_row.draw_date) %></div>
+        <div class="text-xs text-gray-500">Concurso <%= @all.first_row.contest_number %></div>
+      </div>
+      <div class="rounded border p-4">
+        <div class="text-sm text-gray-500">Último sorteio</div>
+        <div class="text-xl font-semibold"><%= l(@all.last_row.draw_date) %></div>
+        <div class="text-xs text-gray-500">Concurso <%= @all.last_row.contest_number %></div>
+      </div>
+      <div class="rounded border p-4">
+        <div class="text-sm text-gray-500">Período analisado</div>
+        <div class="text-xl font-semibold"><%= window_label(@window_key) %></div>
+        <div class="text-xs text-gray-500"><%= number_with_delimiter(@dataset.size) %> concursos</div>
+      </div>
+      <div class="rounded border p-4">
+        <div class="text-sm text-gray-500">Soma média das dezenas</div>
+        <div class="text-2xl font-semibold"><%= number_with_precision(@sums.mean, precision: 1) %></div>
+        <div class="text-xs text-gray-500">mediana <%= number_with_precision(@sums.median, precision: 1) %></div>
+      </div>
+    </section>
+
+    <%# Frequência das dezenas %>
+    <section class="mb-8">
+      <h2 class="mb-1 text-lg font-semibold">Frequência das dezenas</h2>
+      <p class="mb-3 text-sm text-gray-600">
+        Número de concursos em que cada dezena saiu no período. Esperado por acaso: cerca de
+        <%= percent(MegaSena::Stats::Frequency::EXPECTED_PERCENT_OF_DRAWS, 0) %> dos concursos por dezena.
+      </p>
+      <div class="grid grid-cols-6 gap-1.5 sm:grid-cols-10">
+        <% @entries.each do |entry| %>
+          <%= heat_cell(entry, @frequency.min_count, @frequency.max_count) %>
+        <% end %>
+      </div>
+    </section>
+
+    <section class="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <% [ [ "Mais sorteadas", @most_frequent ], [ "Menos sorteadas", @least_frequent ] ].each do |title, list| %>
+        <div class="rounded border">
+          <h3 class="border-b bg-gray-50 px-3 py-2 text-sm font-semibold"><%= title %></h3>
+          <table class="w-full text-sm">
+            <thead class="text-left text-gray-500">
+              <tr><th class="px-3 py-1.5">Dezena</th><th class="px-3 py-1.5 text-right">Vezes</th><th class="px-3 py-1.5 text-right">% concursos</th></tr>
+            </thead>
+            <tbody class="divide-y">
+              <% list.each do |entry| %>
+                <tr>
+                  <td class="px-3 py-1.5 font-semibold"><%= two_digits(entry.number) %></td>
+                  <td class="px-3 py-1.5 text-right tabular-nums"><%= entry.count %></td>
+                  <td class="px-3 py-1.5 text-right tabular-nums"><%= percent(entry.percent_of_draws) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% end %>
+
+      <div class="rounded border">
+        <h3 class="border-b bg-gray-50 px-3 py-2 text-sm font-semibold">Maior tempo sem sair</h3>
+        <table class="w-full text-sm">
+          <thead class="text-left text-gray-500">
+            <tr><th class="px-3 py-1.5">Dezena</th><th class="px-3 py-1.5 text-right">Concursos</th><th class="px-3 py-1.5 text-right">Intervalo médio</th></tr>
+          </thead>
+          <tbody class="divide-y">
+            <% @most_overdue.each do |entry| %>
+              <tr>
+                <td class="px-3 py-1.5 font-semibold"><%= two_digits(entry.number) %></td>
+                <td class="px-3 py-1.5 text-right tabular-nums"><%= entry.draws_since_last %></td>
+                <td class="px-3 py-1.5 text-right tabular-nums"><%= entry.average_gap ? number_with_precision(entry.average_gap, precision: 1) : "—" %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <%# Comparativo do período com o histórico completo %>
+    <% if @comparison %>
+      <section class="mb-8">
+        <h2 class="mb-1 text-lg font-semibold">Comparativo: <%= window_label(@window_key).downcase %> × todo o histórico</h2>
+        <p class="mb-3 text-sm text-gray-600">Diferença em pontos percentuais na fração de concursos que contêm cada dezena.</p>
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <% [ [ "Mais frequentes que a média histórica", @comparison.rising, "bg-emerald-500" ],
+               [ "Menos frequentes que a média histórica", @comparison.falling, "bg-rose-500" ] ].each do |title, rows, color| %>
+            <div class="rounded border p-4">
+              <h3 class="mb-3 text-sm font-semibold"><%= title %></h3>
+              <div class="space-y-2">
+                <% max_delta = rows.map { |r| r.delta.abs }.max %>
+                <% rows.each do |row| %>
+                  <%= horizontal_bar(label: "Dezena #{two_digits(row.number)}", value: row.delta.abs, max: max_delta,
+                                     caption: signed_percent(row.delta), color: color) %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </section>
+    <% end %>
+
+    <%# Distribuições %>
+    <section class="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div class="rounded border p-4">
+        <h2 class="mb-3 text-lg font-semibold">Pares e ímpares por concurso</h2>
+        <div class="space-y-2">
+          <% max_parity = @parity.map(&:count).max %>
+          <% @parity.each do |bucket| %>
+            <%= horizontal_bar(label: bucket.label, value: bucket.count, max: max_parity,
+                               caption: "#{bucket.count} (#{percent(bucket.percent)})") %>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="rounded border p-4">
+        <h2 class="mb-1 text-lg font-semibold">Distribuição da soma das dezenas</h2>
+        <p class="mb-3 text-sm text-gray-600">
+          Mínima <%= @sums.min %> · máxima <%= @sums.max %> · faixas de 20.
+        </p>
+        <div class="space-y-1.5">
+          <% buckets = @sums.buckets %>
+          <% max_sum = buckets.map(&:count).max %>
+          <% buckets.each do |bucket| %>
+            <%= horizontal_bar(label: bucket.label, value: bucket.count, max: max_sum,
+                               caption: "#{bucket.count} (#{percent(bucket.percent)})", color: "bg-sky-500") %>
+          <% end %>
+        </div>
+      </div>
+    </section>
+
+    <%# Evolução histórica %>
+    <section class="mb-8 rounded border p-4">
+      <div class="mb-3 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-semibold">Evolução histórica da dezena <%= two_digits(@selected_number) %></h2>
+          <p class="text-sm text-gray-600">
+            % dos concursos que continham a dezena, em blocos de <%= @block_size %> concursos
+            (linha tracejada = 10% esperado). Usa todo o histórico.
+          </p>
+        </div>
+        <%= form_with url: dashboard_path, method: :get, class: "flex items-end gap-2 text-sm" do |form| %>
+          <%= form.hidden_field :window, value: @window_key %>
+          <div>
+            <%= form.label :number, "Dezena", class: "block text-gray-500" %>
+            <%= form.select :number, options_for_select((1..60).map { |n| [ two_digits(n), n ] }, @selected_number),
+                  {}, class: "rounded border px-2 py-1.5" %>
+          </div>
+          <div>
+            <%= form.label :block, "Bloco", class: "block text-gray-500" %>
+            <%= form.select :block, options_for_select(DashboardController::BLOCK_SIZES.map { |s| [ "#{s} concursos", s ] }, @block_size),
+                  {}, class: "rounded border px-2 py-1.5" %>
+          </div>
+          <%= form.submit "Atualizar", class: "rounded bg-emerald-600 px-3 py-1.5 text-white hover:bg-emerald-700" %>
+        <% end %>
+      </div>
+      <%= evolution_chart(@evolution) %>
+    </section>
+
+    <p class="text-xs text-gray-500">
+      Os sorteios são independentes: todas as combinações têm a mesma probabilidade e os indicadores acima
+      descrevem o passado, sem capacidade de prever resultados futuros.
+    </p>
+  <% end %>
+</div>

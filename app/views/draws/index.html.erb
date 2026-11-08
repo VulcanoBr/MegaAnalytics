@@ -1,0 +1,123 @@
+<div class="mx-auto w-full max-w-6xl p-6">
+  <%= render "shared/nav" %>
+  <%= render "shared/flash" %>
+
+  <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+    <h1 class="text-2xl font-bold">Concursos</h1>
+
+    <%= form_with url: draws_path, method: :get, class: "flex items-center gap-2 text-sm print:hidden" do |form| %>
+      <%= form.label :contest, "Ir para o concurso", class: "text-gray-500" %>
+      <%= form.number_field :contest, min: 1, placeholder: "nº", class: "w-24 rounded border px-2 py-1.5" %>
+      <%= form.submit "Abrir", class: "rounded bg-emerald-600 px-3 py-1.5 text-white hover:bg-emerald-700" %>
+    <% end %>
+  </div>
+
+  <%= form_with url: draws_path, method: :get, class: "mb-4 flex flex-wrap items-end gap-3 rounded border p-4 text-sm print:hidden" do |form| %>
+    <div>
+      <%= form.label :from, "De", class: "block text-gray-500" %>
+      <%= form.date_field :from, value: @filter.from, class: "rounded border px-2 py-1.5" %>
+    </div>
+    <div>
+      <%= form.label :to, "Até", class: "block text-gray-500" %>
+      <%= form.date_field :to, value: @filter.to, class: "rounded border px-2 py-1.5" %>
+    </div>
+    <div>
+      <%= form.label :contest_from, "Concurso de", class: "block text-gray-500" %>
+      <%= form.number_field :contest_from, min: 1, value: @filter.contest_from, class: "w-24 rounded border px-2 py-1.5" %>
+    </div>
+    <div>
+      <%= form.label :contest_to, "Concurso até", class: "block text-gray-500" %>
+      <%= form.number_field :contest_to, min: 1, value: @filter.contest_to, class: "w-24 rounded border px-2 py-1.5" %>
+    </div>
+    <div>
+      <%= form.label :winners_min, "Ganhadores Sena (mín.)", class: "block text-gray-500" %>
+      <%= form.number_field :winners_min, min: 0, value: @filter.winners_min, class: "w-24 rounded border px-2 py-1.5" %>
+    </div>
+    <div>
+      <%= form.label :winners_max, "Ganhadores Sena (máx.)", class: "block text-gray-500" %>
+      <%= form.number_field :winners_max, min: 0, value: @filter.winners_max, class: "w-24 rounded border px-2 py-1.5" %>
+    </div>
+    <div>
+      <%= form.label :value_field, "Valor de", class: "block text-gray-500" %>
+      <%= form.select :value_field, options_for_select(value_field_options, @filter.value_field),
+            {}, class: "rounded border px-2 py-1.5" %>
+    </div>
+    <div>
+      <%= form.label :value_min, "Valor mínimo (R$)", class: "block text-gray-500" %>
+      <%= form.text_field :value_min, value: money_input(@filter.value_min), inputmode: "decimal",
+            placeholder: "50.000.000,00", class: "w-40 rounded border px-2 py-1.5" %>
+    </div>
+    <div>
+      <%= form.label :value_max, "Valor máximo (R$)", class: "block text-gray-500" %>
+      <%= form.text_field :value_max, value: money_input(@filter.value_max), inputmode: "decimal",
+            placeholder: "60.000.000,00", class: "w-40 rounded border px-2 py-1.5" %>
+    </div>
+    <div>
+      <%= form.label :number, "Contém a dezena", class: "block text-gray-500" %>
+      <%= form.select :number, options_for_select([ [ "Qualquer", "" ] ] + (1..60).map { |n| [ two_digits(n), n ] }, @filter.number),
+            {}, class: "rounded border px-2 py-1.5" %>
+    </div>
+    <div>
+      <%= form.label :order, "Ordem", class: "block text-gray-500" %>
+      <%= form.select :order, options_for_select([ [ "Mais recentes primeiro", "desc" ], [ "Mais antigos primeiro", "asc" ] ], @filter.order.to_s),
+            {}, class: "rounded border px-2 py-1.5" %>
+    </div>
+    <div>
+      <%= form.label :per, "Por página", class: "block text-gray-500" %>
+      <%= form.select :per, options_for_select(DrawFilter::PER_PAGE_OPTIONS, @filter.per_page),
+            {}, class: "rounded border px-2 py-1.5" %>
+    </div>
+    <%= form.submit "Filtrar", class: "rounded bg-emerald-600 px-3 py-1.5 text-white hover:bg-emerald-700" %>
+    <% if @filter.filtered? %>
+      <%= link_to "Limpar", draws_path, class: "py-1.5 text-gray-600 underline" %>
+    <% end %>
+  <% end %>
+
+  <div class="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+    <p class="text-gray-600">
+      <strong><%= number_with_delimiter(@total) %></strong> concurso(s) — <%= @filter.criteria_label %>
+    </p>
+    <div class="flex gap-2 print:hidden">
+      <%= link_to "Exportar CSV", draws_path(@filter.to_params.merge(format: :csv)),
+            class: "rounded border px-3 py-1.5 hover:bg-gray-50" %>
+      <%= link_to "Relatório do período", report_path(@filter.to_params.except(:number, :order)),
+            class: "rounded border px-3 py-1.5 hover:bg-gray-50" %>
+      <%= link_to "Frequência das dezenas", frequency_path(@filter.to_params.except(:number, :order)),
+            class: "rounded border px-3 py-1.5 hover:bg-gray-50" %>
+    </div>
+  </div>
+
+  <div class="overflow-x-auto rounded border">
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-50 text-left text-gray-600">
+        <tr>
+          <th class="px-3 py-2">Concurso</th>
+          <th class="px-3 py-2">Data</th>
+          <th class="px-3 py-2">Dezenas</th>
+          <th class="px-3 py-2 text-right">Soma</th>
+          <th class="px-3 py-2 text-right">Ganhadores Sena</th>
+          <th class="px-3 py-2 text-right">Prêmio Sena</th>
+          <th class="px-3 py-2 text-right">Arrecadação</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y">
+        <% if @draws.empty? %>
+          <tr><td colspan="7" class="px-3 py-6 text-center text-gray-500">Nenhum concurso encontrado para os filtros informados.</td></tr>
+        <% end %>
+        <% @draws.each do |draw| %>
+          <tr class="hover:bg-gray-50">
+            <td class="px-3 py-2"><%= link_to "##{draw.contest_number}", draw_path(draw), class: "font-semibold text-emerald-700 underline" %></td>
+            <td class="px-3 py-2 whitespace-nowrap"><%= l(draw.draw_date) %></td>
+            <td class="px-3 py-2"><%= draw_balls(draw.numbers) %></td>
+            <td class="px-3 py-2 text-right tabular-nums"><%= draw.numbers_sum %></td>
+            <td class="px-3 py-2 text-right tabular-nums"><%= draw.winners_sena || "—" %></td>
+            <td class="px-3 py-2 text-right tabular-nums whitespace-nowrap"><%= draw.sena_winner? ? money(draw.prize_sena) : "—" %></td>
+            <td class="px-3 py-2 text-right tabular-nums whitespace-nowrap"><%= money(draw.total_revenue) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <%= render "draws/pagination", filter: @filter, page: @page, total_pages: @total_pages %>
+</div>

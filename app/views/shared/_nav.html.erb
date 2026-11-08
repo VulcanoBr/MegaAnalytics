@@ -1,0 +1,13 @@
+<nav class="mb-6 flex flex-wrap items-center gap-4 border-b pb-3 text-sm print:hidden">
+  <span class="font-bold text-emerald-700">MegaStats</span>
+  <% [ [ "Dashboard", dashboard_path, "dashboard" ],
+       [ "Concursos", draws_path, "draws" ],
+       [ "Frequência", frequency_path, "frequencies" ],
+       [ "Combinações", combinations_path, "combinations" ],
+       [ "Distribuições", distributions_path, "distributions" ],
+       [ "Relatório", report_path, "reports" ],
+       [ "Importações", import_batches_path, "import_batches" ] ].each do |label, path, controller| %>
+    <%= link_to label, path,
+          class: "hover:underline #{controller_name == controller ? 'font-semibold text-gray-900' : 'text-gray-600'}" %>
+  <% end %>
+</nav>

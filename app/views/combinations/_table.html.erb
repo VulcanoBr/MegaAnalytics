@@ -1,0 +1,36 @@
+<%# locals: title, subtitle, results, expected_percent %>
+<div class="rounded border">
+  <div class="border-b bg-gray-50 px-3 py-2">
+    <h3 class="text-sm font-semibold"><%= title %></h3>
+    <p class="text-xs text-gray-500"><%= subtitle %></p>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="text-left text-gray-500">
+        <tr>
+          <th class="px-3 py-1.5">#</th>
+          <th class="px-3 py-1.5">Combinação</th>
+          <th class="px-3 py-1.5 text-right">Vezes</th>
+          <th class="px-3 py-1.5 text-right">% concursos</th>
+          <th class="px-3 py-1.5 text-right" title="Quantas vezes acima do esperado por acaso">× esperado</th>
+          <th class="px-3 py-1.5 text-right">Último</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y">
+        <% if results.empty? %>
+          <tr><td colspan="6" class="px-3 py-4 text-center text-gray-500">Nenhuma combinação encontrada.</td></tr>
+        <% end %>
+        <% results.each_with_index do |result, index| %>
+          <tr>
+            <td class="px-3 py-1.5 text-gray-400"><%= index + 1 %></td>
+            <td class="px-3 py-1.5 font-mono font-semibold"><%= result.label %></td>
+            <td class="px-3 py-1.5 text-right tabular-nums"><%= result.count %></td>
+            <td class="px-3 py-1.5 text-right tabular-nums"><%= percent(result.percent_of_draws, 2) %></td>
+            <td class="px-3 py-1.5 text-right tabular-nums"><%= number_with_precision(result.lift, precision: 1) %>×</td>
+            <td class="px-3 py-1.5 text-right tabular-nums">#<%= result.last_seen_contest %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

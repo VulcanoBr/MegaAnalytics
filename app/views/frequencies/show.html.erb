@@ -1,0 +1,224 @@
+<div class="mx-auto w-full max-w-6xl p-6" data-controller="print">
+  <%= render "shared/nav" %>
+  <%= render "shared/flash" %>
+
+  <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold">Frequência por filtro</h1>
+      <p class="text-sm text-gray-600">
+        Quantas vezes cada dezena saiu nos concursos encontrados e há quantos concursos ela não aparece desde a última vez.
+      </p>
+    </div>
+    <div class="flex flex-wrap gap-2 text-sm print:hidden">
+      <%= link_to "Exportar CSV", frequency_path(@filter.to_params.merge(sort: @sort, format: :csv)),
+            class: "rounded border px-3 py-1.5 hover:bg-gray-50" %>
+      <%= link_to "Ver concursos", draws_path(@filter.to_params), class: "rounded border px-3 py-1.5 hover:bg-gray-50" %>
+      <%= link_to "Relatório completo", report_path(@filter.to_params), class: "rounded border px-3 py-1.5 hover:bg-gray-50" %>
+      <button type="button" data-action="click->print#print"
+              class="rounded bg-emerald-600 px-3 py-1.5 text-white hover:bg-emerald-700">Imprimir / PDF</button>
+    </div>
+  </div>
+
+  <%# Filtros %>
+  <div class="mb-6 rounded border p-4 text-sm print:hidden">
+    <%
+      base = @filter.to_params.except(:number, :order).merge(sort: @sort)
+
+      contest_presets = [ [ "Todos os concursos", {} ] ]
+      if @last_contest
+        [ 50, 100, 500 ].each do |size|
+          next if size >= @last_contest
+
+          contest_presets << [ "Últimos #{size}", { contest_from: @last_contest - size + 1, contest_to: @last_contest } ]
+        end
+      end
+
+      winners_presets = [
+        [ "Qualquer", {} ],
+        [ "Sem ganhador (acumulou)", { winners_min: 0, winners_max: 0 } ],
+        [ "Com ganhador (1 ou mais)", { winners_min: 1 } ],
+        [ "Exatamente 1", { winners_min: 1, winners_max: 1 } ],
+        [ "2 ou mais", { winners_min: 2 } ]
+      ]
+
+      value_presets = [
+        [ "Qualquer valor", {} ],
+        [ "Até R$ 10 mi", { value_min: 0, value_max: 10_000_000 } ],
+        [ "R$ 10 mi a 50 mi", { value_min: 10_000_000, value_max: 50_000_000 } ],
+        [ "R$ 50 mi a 100 mi", { value_min: 50_000_000, value_max: 100_000_000 } ],
+        [ "Acima de R$ 100 mi", { value_min: 100_000_000 } ]
+      ]
+    %>
+
+    <div class="mb-3">
+      <div class="mb-1 text-gray-500">Atalhos de concursos</div>
+      <div class="flex flex-wrap gap-1">
+        <% contest_presets.each do |label, range| %>
+          <% active = @filter.contest_from == range[:contest_from] && @filter.contest_to == range[:contest_to] %>
+          <%= link_to label, frequency_path(base.except(:contest_from, :contest_to).merge(range)),
+                class: "rounded border px-3 py-1.5 #{active ? 'border-emerald-600 bg-emerald-600 text-white' : 'text-gray-700 hover:bg-gray-50'}" %>
+        <% end %>
+      </div>
+    </div>
+    <div class="mb-3">
+      <div class="mb-1 text-gray-500">Atalhos de ganhadores da Sena</div>
+      <div class="flex flex-wrap gap-1">
+        <% winners_presets.each do |label, range| %>
+          <% active = @filter.winners_min == range[:winners_min] && @filter.winners_max == range[:winners_max] %>
+          <%= link_to label, frequency_path(base.except(:winners_min, :winners_max).merge(range)),
+                class: "rounded border px-3 py-1.5 #{active ? 'border-emerald-600 bg-emerald-600 text-white' : 'text-gray-700 hover:bg-gray-50'}" %>
+        <% end %>
+      </div>
+    </div>
+    <div class="mb-4">
+      <div class="mb-1 text-gray-500">Atalhos de valor — <%= DrawFilter::VALUE_FIELDS[@filter.value_field] %></div>
+      <div class="flex flex-wrap gap-1">
+        <% value_presets.each do |label, range| %>
+          <% active = @filter.value_min == range[:value_min] && @filter.value_max == range[:value_max] %>
+          <% target = base.except(:value_min, :value_max, :value_field).merge(range) %>
+          <% target[:value_field] = @filter.value_field if range.any? %>
+          <%= link_to label, frequency_path(target),
+                class: "rounded border px-3 py-1.5 #{active ? 'border-emerald-600 bg-emerald-600 text-white' : 'text-gray-700 hover:bg-gray-50'}" %>
+        <% end %>
+      </div>
+    </div>
+
+    <%= form_with url: frequency_path, method: :get, class: "flex flex-wrap items-end gap-3" do |form| %>
+      <div>
+        <%= form.label :contest_from, "Concurso inicial", class: "block text-gray-500" %>
+        <%= form.number_field :contest_from, min: 1, value: @filter.contest_from, placeholder: "início", class: "w-28 rounded border px-2 py-1.5" %>
+      </div>
+      <div>
+        <%= form.label :contest_to, "Concurso final", class: "block text-gray-500" %>
+        <%= form.number_field :contest_to, min: 1, value: @filter.contest_to, placeholder: "último", class: "w-28 rounded border px-2 py-1.5" %>
+      </div>
+      <div>
+        <%= form.label :winners_min, "Ganhadores Sena — mín.", class: "block text-gray-500" %>
+        <%= form.number_field :winners_min, min: 0, value: @filter.winners_min, class: "w-28 rounded border px-2 py-1.5" %>
+      </div>
+      <div>
+        <%= form.label :winners_max, "Ganhadores Sena — máx.", class: "block text-gray-500" %>
+        <%= form.number_field :winners_max, min: 0, value: @filter.winners_max, class: "w-28 rounded border px-2 py-1.5" %>
+      </div>
+      <div>
+        <%= form.label :value_field, "Valor de", class: "block text-gray-500" %>
+        <%= form.select :value_field, options_for_select(value_field_options, @filter.value_field),
+              {}, class: "rounded border px-2 py-1.5" %>
+      </div>
+      <div>
+        <%= form.label :value_min, "Valor mínimo (R$)", class: "block text-gray-500" %>
+        <%= form.text_field :value_min, value: money_input(@filter.value_min), inputmode: "decimal",
+              placeholder: "50.000.000,00", class: "w-40 rounded border px-2 py-1.5" %>
+      </div>
+      <div>
+        <%= form.label :value_max, "Valor máximo (R$)", class: "block text-gray-500" %>
+        <%= form.text_field :value_max, value: money_input(@filter.value_max), inputmode: "decimal",
+              placeholder: "60.000.000,00", class: "w-40 rounded border px-2 py-1.5" %>
+      </div>
+      <div>
+        <%= form.label :sort, "Ordenar por", class: "block text-gray-500" %>
+        <%= form.select :sort, options_for_select([ [ "Dezena", "number" ], [ "Mais vezes", "count" ], [ "Maior tempo sem sair", "delay" ] ], @sort),
+              {}, class: "rounded border px-2 py-1.5" %>
+      </div>
+      <%= form.submit "Calcular", class: "rounded bg-emerald-600 px-3 py-1.5 text-white hover:bg-emerald-700" %>
+      <% if @filter.filtered? %>
+        <%= link_to "Limpar", frequency_path, class: "py-1.5 text-gray-600 underline" %>
+      <% end %>
+    <% end %>
+    <p class="mt-3 text-xs text-gray-500">
+      O intervalo de valor é inclusivo e aceita formatos como 50.000.000,00 ou 50000000. Concursos sem o valor informado
+      (por exemplo, sem ganhador no “Prêmio da Sena”) ficam de fora quando há filtro de valor.
+    </p>
+  </div>
+
+  <% if @dataset.empty? %>
+    <div class="rounded border border-dashed p-10 text-center text-gray-600">
+      Nenhum concurso encontrado para os critérios informados.
+    </div>
+  <% else %>
+    <% overdue = @frequency.entries.select(&:draws_after_last).max_by { |e| [ e.draws_after_last, -e.number ] } %>
+    <% top = @frequency.most_frequent(1).first %>
+
+    <section class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4 text-sm">
+      <div class="rounded border p-4">
+        <div class="text-gray-500">Concursos encontrados</div>
+        <div class="text-2xl font-semibold"><%= number_with_delimiter(@dataset.size) %></div>
+        <div class="text-xs text-gray-500">#<%= @dataset.first_row.contest_number %> a #<%= @dataset.last_row.contest_number %></div>
+      </div>
+      <div class="rounded border p-4">
+        <div class="text-gray-500">Critérios</div>
+        <div class="font-medium"><%= @filter.criteria_label %></div>
+      </div>
+      <div class="rounded border p-4">
+        <div class="text-gray-500">Dezena que mais saiu</div>
+        <div class="text-2xl font-semibold"><%= two_digits(top.number) %></div>
+        <div class="text-xs text-gray-500"><%= top.count %> vez(es) — <%= percent(top.percent_of_draws) %></div>
+      </div>
+      <div class="rounded border p-4">
+        <div class="text-gray-500">Maior tempo sem sair</div>
+        <% if overdue %>
+          <div class="text-2xl font-semibold"><%= two_digits(overdue.number) %></div>
+          <div class="text-xs text-gray-500"><%= overdue.draws_after_last %> concurso(s) sem sair</div>
+        <% else %>
+          <div class="text-2xl font-semibold">—</div>
+        <% end %>
+      </div>
+    </section>
+
+    <% show_distance = !@dataset.contiguous? %>
+    <% max_count = @frequency.max_count %>
+
+    <div class="overflow-x-auto rounded border">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 text-left text-gray-600">
+          <tr>
+            <th class="px-3 py-2">Dezena</th>
+            <th class="px-3 py-2 text-right">Vezes que saiu</th>
+            <th class="px-3 py-2">% dos concursos</th>
+            <th class="px-3 py-2 text-right">Último concurso em que saiu</th>
+            <th class="px-3 py-2 text-right" title="Concursos encontrados que vieram depois da última aparição">Concursos sem sair</th>
+            <% if show_distance %>
+              <th class="px-3 py-2 text-right" title="Diferença entre o nº do último concurso encontrado e o da última aparição">Distância (nº do concurso)</th>
+            <% end %>
+          </tr>
+        </thead>
+        <tbody class="divide-y">
+          <% @entries.each do |entry| %>
+            <tr class="hover:bg-gray-50">
+              <td class="px-3 py-1.5 font-semibold"><%= two_digits(entry.number) %></td>
+              <td class="px-3 py-1.5 text-right tabular-nums"><%= entry.count %></td>
+              <td class="px-3 py-1.5">
+                <%= horizontal_bar(label: "", value: entry.count, max: max_count, caption: percent(entry.percent_of_draws)) %>
+              </td>
+              <td class="px-3 py-1.5 text-right tabular-nums">
+                <% if entry.last_seen_contest %>
+                  <%= link_to "##{entry.last_seen_contest}", draw_path(entry.last_seen_contest), class: "text-emerald-700 underline" %>
+                <% else %>—<% end %>
+              </td>
+              <td class="px-3 py-1.5 text-right tabular-nums">
+                <% if entry.draws_after_last.nil? %>
+                  <span class="text-amber-700">nunca saiu</span>
+                <% else %>
+                  <%= entry.draws_after_last %>
+                <% end %>
+              </td>
+              <% if show_distance %>
+                <td class="px-3 py-1.5 text-right tabular-nums"><%= entry.draws_since_last || "—" %></td>
+              <% end %>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="mt-3 text-xs text-gray-500">
+      “Concursos sem sair” conta quantos dos concursos encontrados vieram depois da última aparição da dezena
+      (0 = saiu no último concurso do conjunto). Esperado por acaso: cerca de <%= percent(MegaSena::Stats::Frequency::EXPECTED_PERCENT_OF_DRAWS, 0) %>
+      dos concursos por dezena.
+      <% if show_distance %>
+        Como os concursos encontrados não são seguidos (há buracos entre eles), a coluna “Distância” mostra a diferença em números de concurso.
+      <% end %>
+      Os sorteios são independentes: estes indicadores descrevem o passado e não preveem resultados.
+    </p>
+  <% end %>
+</div>

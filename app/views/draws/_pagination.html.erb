@@ -1,0 +1,19 @@
+<%# locals: filter, page, total_pages %>
+<% if total_pages > 1 %>
+  <% base = filter.to_params.merge(per: filter.per_page) %>
+  <nav class="mt-4 flex items-center justify-between text-sm print:hidden" aria-label="Paginação">
+    <% if page > 1 %>
+      <%= link_to "← Anterior", draws_path(base.merge(page: page - 1)), class: "rounded border px-3 py-1.5 hover:bg-gray-50" %>
+    <% else %>
+      <span class="rounded border px-3 py-1.5 text-gray-300">← Anterior</span>
+    <% end %>
+
+    <span class="text-gray-600">Página <%= page %> de <%= total_pages %></span>
+
+    <% if page < total_pages %>
+      <%= link_to "Próxima →", draws_path(base.merge(page: page + 1)), class: "rounded border px-3 py-1.5 hover:bg-gray-50" %>
+    <% else %>
+      <span class="rounded border px-3 py-1.5 text-gray-300">Próxima →</span>
+    <% end %>
+  </nav>
+<% end %>

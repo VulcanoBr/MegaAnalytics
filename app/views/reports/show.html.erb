@@ -1,0 +1,212 @@
+<div class="mx-auto w-full max-w-6xl p-6" data-controller="print">
+  <%= render "shared/nav" %>
+  <%= render "shared/flash" %>
+
+  <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold">Relatório estatístico</h1>
+      <p class="text-gray-600">Critérios: <strong><%= @filter.criteria_label %></strong></p>
+    </div>
+    <div class="flex flex-wrap gap-2 text-sm print:hidden">
+      <%= link_to "Concursos (CSV)", draws_path(@filter.to_params.except(:number, :order).merge(format: :csv)),
+            class: "rounded border px-3 py-1.5 hover:bg-gray-50" %>
+      <%= link_to "Frequência (CSV)", report_path(@filter.to_params.merge(format: :csv, section: "frequency")),
+            class: "rounded border px-3 py-1.5 hover:bg-gray-50" %>
+      <%= link_to "Pares (CSV)", report_path(@filter.to_params.merge(format: :csv, section: "pairs")),
+            class: "rounded border px-3 py-1.5 hover:bg-gray-50" %>
+      <%= link_to "Ternos (CSV)", report_path(@filter.to_params.merge(format: :csv, section: "triples")),
+            class: "rounded border px-3 py-1.5 hover:bg-gray-50" %>
+      <button type="button" data-action="click->print#print"
+              class="rounded bg-emerald-600 px-3 py-1.5 text-white hover:bg-emerald-700">Imprimir / PDF</button>
+    </div>
+  </div>
+
+  <%# Filtro de período %>
+  <div class="mb-6 rounded border p-4 text-sm print:hidden">
+    <div class="mb-3 flex flex-wrap gap-1">
+      <% period_presets.each do |label, range| %>
+        <%= link_to label, report_path(range),
+              class: "rounded border px-3 py-1.5 #{preset_active?(@filter, range) ? 'border-emerald-600 bg-emerald-600 text-white' : 'text-gray-700 hover:bg-gray-50'}" %>
+      <% end %>
+    </div>
+    <%= form_with url: report_path, method: :get, class: "flex flex-wrap items-end gap-3" do |form| %>
+      <div>
+        <%= form.label :from, "De", class: "block text-gray-500" %>
+        <%= form.date_field :from, value: @filter.from, class: "rounded border px-2 py-1.5" %>
+      </div>
+      <div>
+        <%= form.label :to, "Até", class: "block text-gray-500" %>
+        <%= form.date_field :to, value: @filter.to, class: "rounded border px-2 py-1.5" %>
+      </div>
+      <%= form.submit "Gerar relatório", class: "rounded bg-emerald-600 px-3 py-1.5 text-white hover:bg-emerald-700" %>
+    <% end %>
+  </div>
+
+  <% if @report.empty? %>
+    <div class="rounded border border-dashed p-10 text-center text-gray-600">
+      Nenhum concurso encontrado no período informado.
+    </div>
+  <% else %>
+    <% fin = @report.financial %>
+
+    <%# Resumo %>
+    <section class="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div class="rounded border p-4 text-sm">
+        <div class="text-gray-500">Concursos no período</div>
+        <div class="text-2xl font-semibold"><%= number_with_delimiter(@report.draws_count) %></div>
+        <div class="text-xs text-gray-500">#<%= @report.first_row.contest_number %> a #<%= @report.last_row.contest_number %></div>
+      </div>
+      <div class="rounded border p-4 text-sm">
+        <div class="text-gray-500">Primeiro / último sorteio</div>
+        <div class="font-semibold"><%= l(@report.first_row.draw_date) %></div>
+        <div class="font-semibold"><%= l(@report.last_row.draw_date) %></div>
+      </div>
+      <div class="rounded border p-4 text-sm">
+        <div class="text-gray-500">Arrecadação total</div>
+        <div class="text-xl font-semibold"><%= money(fin.total_revenue) %></div>
+        <div class="text-xs text-gray-500">média <%= money(fin.average_revenue) %> por concurso</div>
+      </div>
+      <div class="rounded border p-4 text-sm">
+        <div class="text-gray-500">Prêmios da Sena pagos</div>
+        <div class="text-xl font-semibold"><%= money(fin.total_sena_prizes) %></div>
+        <div class="text-xs text-gray-500">rateio × ganhadores</div>
+      </div>
+    </section>
+
+    <section class="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3 text-sm">
+      <div class="rounded border p-4">
+        <div class="text-gray-500">Concursos com ganhador da Sena</div>
+        <div class="text-xl font-semibold"><%= fin.draws_with_sena_winner %>
+          <span class="text-sm font-normal text-gray-500">(<%= percent(fin.draws_with_sena_winner * 100.0 / @report.draws_count) %>)</span></div>
+        <div class="text-xs text-gray-500">acumulados: <%= fin.draws_without_sena_winner %></div>
+      </div>
+      <div class="rounded border p-4">
+        <div class="text-gray-500">Maior prêmio individual da Sena</div>
+        <% if fin.largest_sena_prize_draw %>
+          <div class="text-xl font-semibold"><%= money(fin.largest_sena_prize_draw.prize_sena) %></div>
+          <div class="text-xs"><%= link_to "concurso ##{fin.largest_sena_prize_draw.contest_number}", draw_path(fin.largest_sena_prize_draw), class: "text-emerald-700 underline" %></div>
+        <% else %><div class="text-xl font-semibold">—</div><% end %>
+      </div>
+      <div class="rounded border p-4">
+        <div class="text-gray-500">Maior acumulado da Sena</div>
+        <% if fin.largest_accumulated_draw %>
+          <div class="text-xl font-semibold"><%= money(fin.largest_accumulated_draw.accumulated_sena) %></div>
+          <div class="text-xs"><%= link_to "concurso ##{fin.largest_accumulated_draw.contest_number}", draw_path(fin.largest_accumulated_draw), class: "text-emerald-700 underline" %></div>
+        <% else %><div class="text-xl font-semibold">—</div><% end %>
+      </div>
+    </section>
+
+    <%# Frequência completa %>
+    <section class="mb-8">
+      <h2 class="mb-1 text-lg font-semibold">Frequência das dezenas</h2>
+      <p class="mb-3 text-sm text-gray-600">Esperado por acaso: ≈ 10% dos concursos por dezena.</p>
+      <div class="overflow-x-auto rounded border">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 text-left text-gray-600">
+            <tr>
+              <th class="px-3 py-2">Dezena</th>
+              <th class="px-3 py-2 text-right">Vezes</th>
+              <th class="px-3 py-2">% dos concursos</th>
+              <th class="px-3 py-2 text-right">Último concurso</th>
+              <th class="px-3 py-2 text-right">Sem sair há</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y">
+            <% max_percent = @report.frequency.entries.map(&:percent_of_draws).max %>
+            <% @report.frequency.entries.each do |entry| %>
+              <tr>
+                <td class="px-3 py-1 font-semibold"><%= two_digits(entry.number) %></td>
+                <td class="px-3 py-1 text-right tabular-nums"><%= entry.count %></td>
+                <td class="px-3 py-1">
+                  <%= horizontal_bar(label: "", value: entry.percent_of_draws, max: max_percent, caption: percent(entry.percent_of_draws)) %>
+                </td>
+                <td class="px-3 py-1 text-right tabular-nums"><%= entry.last_seen_contest ? "##{entry.last_seen_contest}" : "—" %></td>
+                <td class="px-3 py-1 text-right tabular-nums"><%= entry.draws_since_last ? "#{entry.draws_since_last} conc." : "—" %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <%# Distribuições %>
+    <section class="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div class="rounded border p-4">
+        <h2 class="mb-3 text-lg font-semibold">Pares e ímpares</h2>
+        <div class="space-y-2">
+          <% max_parity = @report.parity.map(&:count).max %>
+          <% @report.parity.each do |bucket| %>
+            <%= horizontal_bar(label: bucket.label, value: bucket.count, max: max_parity,
+                               caption: "#{bucket.count} (#{percent(bucket.percent)})") %>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="rounded border p-4">
+        <h2 class="mb-1 text-lg font-semibold">Soma das dezenas</h2>
+        <p class="mb-3 text-sm text-gray-600">
+          Mín. <%= @report.sums.min %> · máx. <%= @report.sums.max %> ·
+          média <%= number_with_precision(@report.sums.mean, precision: 1) %> ·
+          mediana <%= number_with_precision(@report.sums.median, precision: 1) %>
+        </p>
+        <div class="space-y-1.5">
+          <% sum_buckets = @report.sums.buckets %>
+          <% max_sum = sum_buckets.map(&:count).max %>
+          <% sum_buckets.each do |bucket| %>
+            <%= horizontal_bar(label: bucket.label, value: bucket.count, max: max_sum,
+                               caption: "#{bucket.count} (#{percent(bucket.percent)})", color: "bg-sky-500") %>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="rounded border p-4">
+        <h2 class="mb-3 text-lg font-semibold">Faixas numéricas</h2>
+        <div class="space-y-2">
+          <% bands = @report.ranges.bands %>
+          <% max_band = bands.map(&:percent_of_numbers).max %>
+          <% bands.each do |band| %>
+            <%= horizontal_bar(label: band.label, value: band.percent_of_numbers, max: max_band,
+                               caption: percent(band.percent_of_numbers, 2), color: "bg-violet-500") %>
+          <% end %>
+        </div>
+        <p class="mt-2 text-xs text-gray-500">Esperado: <%= percent(@report.ranges.expected_percent_of_numbers, 2) %> por faixa.</p>
+      </div>
+
+      <div class="space-y-4">
+        <div class="rounded border p-4 text-sm">
+          <h2 class="mb-2 text-lg font-semibold">Dezenas consecutivas</h2>
+          <p>Concursos com alguma sequência: <strong><%= percent(@report.consecutive.percent_with_sequence) %></strong>
+            <span class="text-gray-500">(esperado <%= percent(@report.consecutive.expected_percent_with_sequence) %>)</span></p>
+          <p>Média de pares consecutivos: <strong><%= number_with_precision(@report.consecutive.mean_pairs, precision: 2) %></strong>
+            <span class="text-gray-500">(esperado 0,50)</span></p>
+        </div>
+        <div class="rounded border p-4 text-sm">
+          <h2 class="mb-2 text-lg font-semibold">Repetição do concurso anterior</h2>
+          <% if @report.repetition.empty? %>
+            <p class="text-gray-600">Requer ao menos dois concursos consecutivos no período.</p>
+          <% else %>
+            <p>Média de dezenas repetidas: <strong><%= number_with_precision(@report.repetition.mean_repeated, precision: 2) %></strong>
+              <span class="text-gray-500">(esperado <%= number_with_precision(@report.repetition.expected_mean, precision: 2) %>)</span></p>
+            <p>Sem nenhuma repetição: <strong><%= percent(@report.repetition.distribution.first.percent) %></strong>
+              <span class="text-gray-500">(esperado <%= percent(@report.repetition.distribution.first.expected_percent) %>)</span></p>
+          <% end %>
+        </div>
+      </div>
+    </section>
+
+    <%# Pares e ternos %>
+    <section class="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <%= render "combinations/table", title: "Pares mais frequentes",
+            subtitle: "Top #{MegaSena::Reports::PeriodReport::TOP} — exporte o CSV para ver mais",
+            results: @report.pairs.top(MegaSena::Reports::PeriodReport::TOP) %>
+      <%= render "combinations/table", title: "Ternos mais frequentes",
+            subtitle: "Top #{MegaSena::Reports::PeriodReport::TOP} — exporte o CSV para ver mais",
+            results: @report.triples.top(MegaSena::Reports::PeriodReport::TOP) %>
+    </section>
+
+    <p class="text-xs text-gray-500">
+      Relatório gerado em <%= l(Time.current, format: :short) %>. Os sorteios são independentes: os indicadores descrevem
+      o histórico e não permitem prever resultados futuros.
+    </p>
+  <% end %>
+</div>

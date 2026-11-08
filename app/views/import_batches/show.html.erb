@@ -1,0 +1,34 @@
+<div class="mx-auto w-full max-w-4xl p-6">
+  <%= render "shared/nav" %>
+  <%= render "shared/flash" %>
+
+  <div class="mb-6 flex items-center justify-between">
+    <h1 class="text-2xl font-bold">Importação #<%= @batch.id %></h1>
+    <%= link_to "Voltar", import_batches_path, class: "text-gray-600 underline" %>
+  </div>
+
+  <dl class="mb-8 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+    <div><dt class="text-gray-500">Arquivo</dt><dd class="break-all font-medium"><%= @batch.file_name %></dd></div>
+    <div><dt class="text-gray-500">Status</dt><dd><%= status_badge(@batch) %></dd></div>
+    <div><dt class="text-gray-500">Auditoria</dt><dd><%= validation_badge(@batch) %></dd></div>
+    <div><dt class="text-gray-500">Duração</dt><dd><%= @batch.duration_in_seconds ? "#{@batch.duration_in_seconds} s" : "—" %></dd></div>
+    <div><dt class="text-gray-500">Linhas lidas</dt><dd class="font-medium"><%= @batch.total_rows %></dd></div>
+    <div><dt class="text-gray-500">Inseridos</dt><dd class="font-medium"><%= @batch.inserted_rows %></dd></div>
+    <div><dt class="text-gray-500">Ignorados</dt><dd class="font-medium"><%= @batch.skipped_rows %></dd></div>
+    <div><dt class="text-gray-500">Atualizados</dt><dd class="font-medium"><%= @batch.updated_rows %></dd></div>
+    <div class="col-span-2 sm:col-span-4">
+      <dt class="text-gray-500">SHA-256</dt>
+      <dd class="break-all font-mono text-xs"><%= @batch.file_sha256 || "—" %></dd>
+    </div>
+  </dl>
+
+  <% if @batch.error_details.any? %>
+    <h2 class="mb-2 text-lg font-semibold">Erros e divergências</h2>
+    <pre class="mb-8 max-h-96 overflow-auto rounded bg-gray-50 p-4 text-xs"><%= JSON.pretty_generate(@batch.error_details) %></pre>
+  <% end %>
+
+  <% if @batch.validation_report.present? %>
+    <h2 class="mb-2 text-lg font-semibold">Relatório de validação histórica</h2>
+    <pre class="max-h-96 overflow-auto rounded bg-gray-50 p-4 text-xs"><%= JSON.pretty_generate(@batch.validation_report) %></pre>
+  <% end %>
+</div>

@@ -1,0 +1,63 @@
+<div class="mx-auto w-full max-w-5xl p-6">
+  <%= render "shared/nav" %>
+  <%= render "shared/flash" %>
+
+  <div class="mb-6 flex items-center justify-between">
+    <h1 class="text-2xl font-bold">MegaStats — Importações</h1>
+    <%= link_to "Nova importação", new_import_batch_path,
+          class: "rounded bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700" %>
+  </div>
+
+  <div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div class="rounded border p-4">
+      <div class="text-sm text-gray-500">Concursos cadastrados</div>
+      <div class="text-2xl font-semibold"><%= number_with_delimiter(@total_draws) %></div>
+    </div>
+    <div class="rounded border p-4">
+      <div class="text-sm text-gray-500">Primeiro sorteio</div>
+      <div class="text-2xl font-semibold"><%= @first_draw ? l(@first_draw.draw_date) : "—" %></div>
+    </div>
+    <div class="rounded border p-4">
+      <div class="text-sm text-gray-500">Último sorteio</div>
+      <div class="text-2xl font-semibold">
+        <%= @last_draw ? "#{l(@last_draw.draw_date)} (##{@last_draw.contest_number})" : "—" %>
+      </div>
+    </div>
+  </div>
+
+  <div class="overflow-x-auto rounded border">
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-50 text-left text-gray-600">
+        <tr>
+          <th class="px-3 py-2">#</th>
+          <th class="px-3 py-2">Arquivo</th>
+          <th class="px-3 py-2">Status</th>
+          <th class="px-3 py-2 text-right">Lidos</th>
+          <th class="px-3 py-2 text-right">Inseridos</th>
+          <th class="px-3 py-2 text-right">Ignorados</th>
+          <th class="px-3 py-2 text-right">Erros</th>
+          <th class="px-3 py-2">Auditoria</th>
+          <th class="px-3 py-2">Data</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y">
+        <% if @batches.empty? %>
+          <tr><td colspan="9" class="px-3 py-6 text-center text-gray-500">Nenhuma importação realizada.</td></tr>
+        <% end %>
+        <% @batches.each do |batch| %>
+          <tr>
+            <td class="px-3 py-2"><%= link_to batch.id, batch, class: "text-emerald-700 underline" %></td>
+            <td class="px-3 py-2"><%= batch.file_name %></td>
+            <td class="px-3 py-2"><%= status_badge(batch) %></td>
+            <td class="px-3 py-2 text-right"><%= batch.total_rows %></td>
+            <td class="px-3 py-2 text-right"><%= batch.inserted_rows %></td>
+            <td class="px-3 py-2 text-right"><%= batch.skipped_rows %></td>
+            <td class="px-3 py-2 text-right"><%= batch.error_rows %></td>
+            <td class="px-3 py-2"><%= validation_badge(batch) %></td>
+            <td class="px-3 py-2"><%= l(batch.created_at, format: :short) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

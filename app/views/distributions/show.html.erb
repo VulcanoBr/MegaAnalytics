@@ -1,0 +1,211 @@
+<div class="mx-auto w-full max-w-6xl p-6">
+  <%= render "shared/nav" %>
+  <%= render "shared/flash" %>
+
+  <% if @all.empty? %>
+    <div class="rounded border border-dashed p-10 text-center">
+      <h1 class="mb-2 text-xl font-semibold">Ainda não há concursos cadastrados</h1>
+      <p class="mb-4 text-gray-600">Importe a planilha oficial da Caixa para ver as distribuições.</p>
+      <%= link_to "Nova importação", new_import_batch_path,
+            class: "rounded bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700" %>
+    </div>
+  <% else %>
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <h1 class="text-2xl font-bold">Distribuições</h1>
+      <div class="flex gap-1 text-sm" role="group" aria-label="Período">
+        <% DashboardController::WINDOWS.each_key do |key| %>
+          <%= link_to window_label(key), distributions_path(window: key),
+                class: "rounded border px-3 py-1.5 #{key == @window_key ? 'border-emerald-600 bg-emerald-600 text-white' : 'text-gray-700 hover:bg-gray-50'}" %>
+        <% end %>
+      </div>
+    </div>
+
+    <p class="mb-6 text-sm text-gray-600">
+      Período: <strong><%= window_label(@window_key) %></strong> (<%= number_with_delimiter(@dataset.size) %> concursos).
+    </p>
+
+    <%# ------------------------------------------------------------------ %>
+    <%# Dezenas consecutivas                                                 %>
+    <%# ------------------------------------------------------------------ %>
+    <section class="mb-10">
+      <h2 class="mb-1 text-lg font-semibold">Dezenas consecutivas no mesmo concurso</h2>
+      <p class="mb-3 text-sm text-gray-600">
+        Um “par consecutivo” são duas dezenas seguidas sorteadas juntas (por exemplo 12 e 13). Uma sequência
+        como 40-41-42 conta como 2 pares consecutivos.
+      </p>
+
+      <div class="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div class="rounded border p-4 text-sm">
+          <div class="text-gray-500">Concursos com alguma sequência</div>
+          <div class="text-2xl font-semibold"><%= percent(@consecutive.percent_with_sequence) %></div>
+          <div class="text-xs text-gray-500">esperado <%= percent(@consecutive.expected_percent_with_sequence) %></div>
+        </div>
+        <div class="rounded border p-4 text-sm">
+          <div class="text-gray-500">Média de pares consecutivos</div>
+          <div class="text-2xl font-semibold"><%= number_with_precision(@consecutive.mean_pairs, precision: 2) %></div>
+          <div class="text-xs text-gray-500">esperado <%= number_with_precision(MegaSena::Stats::ConsecutiveNumbers::EXPECTED_MEAN_PAIRS, precision: 2) %></div>
+        </div>
+        <div class="rounded border p-4 text-sm">
+          <div class="text-gray-500">Concursos com sequência</div>
+          <div class="text-2xl font-semibold"><%= number_with_delimiter(@consecutive.draws_with_sequence) %></div>
+          <div class="text-xs text-gray-500">de <%= number_with_delimiter(@dataset.size) %></div>
+        </div>
+        <div class="rounded border p-4 text-sm">
+          <div class="text-gray-500">Maior sequência</div>
+          <% longest = @consecutive.longest %>
+          <% if longest %>
+            <div class="font-mono text-lg font-semibold"><%= longest.sequences.first.map { |n| two_digits(n) }.join("–") %></div>
+            <div class="text-xs text-gray-500">concurso #<%= longest.contest_number %></div>
+          <% else %>
+            <div class="text-2xl font-semibold">—</div>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="rounded border p-4">
+          <h3 class="mb-3 text-sm font-semibold">Pares consecutivos por concurso: observado × esperado</h3>
+          <div class="space-y-3">
+            <% buckets = @consecutive.distribution %>
+            <% max_percent = buckets.flat_map { |b| [ b.percent, b.expected_percent ] }.max %>
+            <% buckets.each do |bucket| %>
+              <div>
+                <%= horizontal_bar(label: "#{bucket.pairs} par#{'es' unless bucket.pairs == 1}", value: bucket.percent, max: max_percent,
+                                   caption: "#{bucket.count} (#{percent(bucket.percent)})") %>
+                <%= horizontal_bar(label: "esperado", value: bucket.expected_percent, max: max_percent,
+                                   caption: percent(bucket.expected_percent), color: "bg-gray-300") %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="space-y-6">
+          <div class="rounded border">
+            <h3 class="border-b bg-gray-50 px-3 py-2 text-sm font-semibold">Pares consecutivos mais frequentes</h3>
+            <table class="w-full text-sm">
+              <thead class="text-left text-gray-500">
+                <tr>
+                  <th class="px-3 py-1.5">Par</th>
+                  <th class="px-3 py-1.5 text-right">Vezes</th>
+                  <th class="px-3 py-1.5 text-right">% concursos</th>
+                  <th class="px-3 py-1.5 text-right">Último</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y">
+                <% top_pairs = @consecutive.top_adjacent_pairs(10) %>
+                <% if top_pairs.empty? %>
+                  <tr><td colspan="4" class="px-3 py-4 text-center text-gray-500">Nenhuma sequência no período.</td></tr>
+                <% end %>
+                <% top_pairs.each do |pair| %>
+                  <tr>
+                    <td class="px-3 py-1.5 font-mono font-semibold"><%= pair.label %></td>
+                    <td class="px-3 py-1.5 text-right tabular-nums"><%= pair.count %></td>
+                    <td class="px-3 py-1.5 text-right tabular-nums"><%= percent(pair.percent_of_draws, 2) %></td>
+                    <td class="px-3 py-1.5 text-right tabular-nums">#<%= pair.last_seen_contest %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+            <p class="px-3 py-2 text-xs text-gray-500">Um par específico (n, n+1) aparece em ≈ 0,85% dos concursos.</p>
+          </div>
+
+          <div class="rounded border">
+            <h3 class="border-b bg-gray-50 px-3 py-2 text-sm font-semibold">Sequências mais recentes</h3>
+            <table class="w-full text-sm">
+              <thead class="text-left text-gray-500">
+                <tr><th class="px-3 py-1.5">Concurso</th><th class="px-3 py-1.5">Sequências</th></tr>
+              </thead>
+              <tbody class="divide-y">
+                <% @consecutive.recent(10).each do |occurrence| %>
+                  <tr>
+                    <td class="px-3 py-1.5 tabular-nums">#<%= occurrence.contest_number %></td>
+                    <td class="px-3 py-1.5 font-mono">
+                      <%= occurrence.sequences.map { |run| run.map { |n| two_digits(n) }.join("–") }.join("  ·  ") %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <%# ------------------------------------------------------------------ %>
+    <%# Faixas numéricas                                                     %>
+    <%# ------------------------------------------------------------------ %>
+    <section class="mb-8">
+      <h2 class="mb-1 text-lg font-semibold">Faixas numéricas</h2>
+      <p class="mb-3 text-sm text-gray-600">
+        As 60 dezenas divididas em <%= @ranges.band_count %> faixas de <%= @ranges.band_size %>.
+        Por acaso, cada faixa recebe em média <%= number_with_precision(@ranges.expected_mean_per_draw, precision: 1) %> dezena por concurso
+        (<%= percent(@ranges.expected_percent_of_numbers) %> de todas as dezenas sorteadas).
+      </p>
+
+      <div class="mb-6 overflow-x-auto rounded border">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 text-left text-gray-600">
+            <tr>
+              <th class="px-3 py-2">Faixa</th>
+              <th class="px-3 py-2 text-right">Dezenas sorteadas</th>
+              <th class="px-3 py-2">% de todas as dezenas</th>
+              <th class="px-3 py-2 text-right">Média por concurso</th>
+              <th class="px-3 py-2 text-right">Concursos sem dezena na faixa</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y">
+            <% bands = @ranges.bands %>
+            <% max_band = bands.map(&:percent_of_numbers).max %>
+            <% bands.each do |band| %>
+              <tr>
+                <td class="px-3 py-2 font-mono font-semibold"><%= band.label %></td>
+                <td class="px-3 py-2 text-right tabular-nums"><%= number_with_delimiter(band.occurrences) %></td>
+                <td class="px-3 py-2">
+                  <%= horizontal_bar(label: "", value: band.percent_of_numbers, max: max_band,
+                                     caption: percent(band.percent_of_numbers, 2), color: "bg-violet-500") %>
+                </td>
+                <td class="px-3 py-2 text-right tabular-nums"><%= number_with_precision(band.mean_per_draw, precision: 2) %></td>
+                <td class="px-3 py-2 text-right tabular-nums">
+                  <%= band.empty_draws %> (<%= percent(band.empty_percent) %>)
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+          <tfoot class="bg-gray-50 text-xs text-gray-500">
+            <tr>
+              <td class="px-3 py-2">Esperado</td>
+              <td class="px-3 py-2"></td>
+              <td class="px-3 py-2"><%= percent(@ranges.expected_percent_of_numbers, 2) %> por faixa</td>
+              <td class="px-3 py-2 text-right"><%= number_with_precision(@ranges.expected_mean_per_draw, precision: 2) %></td>
+              <td class="px-3 py-2 text-right"><%= percent(@ranges.expected_empty_percent) %></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div class="rounded border p-4">
+        <h3 class="mb-1 text-sm font-semibold">Perfil de distribuição por faixas</h3>
+        <p class="mb-3 text-xs text-gray-500">
+          Número de dezenas em cada faixa, em ordem decrescente, omitindo faixas vazias. Exemplo: “2-1-1-1-1” = duas dezenas
+          em uma faixa e uma em cada uma de outras quatro (uma faixa fica vazia); “1-1-1-1-1-1” = uma dezena em cada faixa.
+        </p>
+        <div class="space-y-3">
+          <% profiles = @ranges.profiles %>
+          <% max_profile = profiles.flat_map { |p| [ p.percent, p.expected_percent ] }.max %>
+          <% profiles.each do |profile| %>
+            <div>
+              <%= horizontal_bar(label: profile.label, value: profile.percent, max: max_profile,
+                                 caption: "#{profile.count} (#{percent(profile.percent)})", color: "bg-violet-500") %>
+              <%= horizontal_bar(label: "esperado", value: profile.expected_percent, max: max_profile,
+                                 caption: percent(profile.expected_percent), color: "bg-gray-300") %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </section>
+
+    <p class="text-xs text-gray-500">
+      Os sorteios são independentes: as análises descrevem o histórico e não permitem prever resultados futuros.
+    </p>
+  <% end %>
+</div>

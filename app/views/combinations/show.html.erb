@@ -1,0 +1,181 @@
+<div class="mx-auto w-full max-w-6xl p-6">
+  <%= render "shared/nav" %>
+  <%= render "shared/flash" %>
+
+  <% if @all.empty? %>
+    <div class="rounded border border-dashed p-10 text-center">
+      <h1 class="mb-2 text-xl font-semibold">Ainda não há concursos cadastrados</h1>
+      <p class="mb-4 text-gray-600">Importe a planilha oficial da Caixa para ver as análises combinatórias.</p>
+      <%= link_to "Nova importação", new_import_batch_path,
+            class: "rounded bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700" %>
+    </div>
+  <% else %>
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <h1 class="text-2xl font-bold">Análise combinatória</h1>
+      <div class="flex gap-1 text-sm" role="group" aria-label="Período">
+        <% DashboardController::WINDOWS.each_key do |key| %>
+          <%= link_to window_label(key),
+                combinations_path(window: key, number: @filter_number, limit: @limit),
+                class: "rounded border px-3 py-1.5 #{key == @window_key ? 'border-emerald-600 bg-emerald-600 text-white' : 'text-gray-700 hover:bg-gray-50'}" %>
+        <% end %>
+      </div>
+    </div>
+
+    <%= form_with url: combinations_path, method: :get, class: "mb-6 flex flex-wrap items-end gap-3 text-sm" do |form| %>
+      <%= form.hidden_field :window, value: @window_key %>
+      <div>
+        <%= form.label :number, "Somente combinações com a dezena", class: "block text-gray-500" %>
+        <%= form.select :number, options_for_select([ [ "Todas", "" ] ] + (1..60).map { |n| [ two_digits(n), n ] }, @filter_number),
+              {}, class: "rounded border px-2 py-1.5" %>
+      </div>
+      <div>
+        <%= form.label :limit, "Exibir", class: "block text-gray-500" %>
+        <%= form.select :limit, options_for_select(CombinationsController::LIMITS.map { |l| [ "Top #{l}", l ] }, @limit),
+              {}, class: "rounded border px-2 py-1.5" %>
+      </div>
+      <%= form.submit "Atualizar", class: "rounded bg-emerald-600 px-3 py-1.5 text-white hover:bg-emerald-700" %>
+    <% end %>
+
+    <p class="mb-6 text-sm text-gray-600">
+      Período: <strong><%= window_label(@window_key) %></strong> (<%= number_with_delimiter(@dataset.size) %> concursos).
+      <% if @filter_number %>Filtrando combinações que contêm a dezena <strong><%= two_digits(@filter_number) %></strong>.<% end %>
+    </p>
+
+    <%# Pares e ternos %>
+    <section class="mb-8">
+      <h2 class="mb-1 text-lg font-semibold">Pares e ternos mais frequentes</h2>
+      <p class="mb-3 text-sm text-gray-600">
+        “× esperado” compara o observado com o que se esperaria por acaso: um par específico está em
+        <%= percent(@pairs.expected_percent, 2) %> dos concursos e um terno específico em
+        <%= percent(@triples.expected_percent, 3) %>.
+      </p>
+
+      <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div class="rounded border p-4 text-sm">
+          <div class="text-gray-500">Pares que já saíram juntos</div>
+          <div class="text-xl font-semibold">
+            <%= number_with_delimiter(@pairs.distinct_seen(containing: @filter_number)) %>
+            <span class="text-sm font-normal text-gray-500">de <%= number_with_delimiter(@pairs.total_possible(containing: @filter_number)) %> possíveis</span>
+          </div>
+        </div>
+        <div class="rounded border p-4 text-sm">
+          <div class="text-gray-500">Ternos que já saíram juntos</div>
+          <div class="text-xl font-semibold">
+            <%= number_with_delimiter(@triples.distinct_seen(containing: @filter_number)) %>
+            <span class="text-sm font-normal text-gray-500">de <%= number_with_delimiter(@triples.total_possible(containing: @filter_number)) %> possíveis</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <%= render "combinations/table", title: "Pares mais frequentes",
+              subtitle: "Top #{@limit} de #{number_with_delimiter(@pairs.total_possible(containing: @filter_number))} pares possíveis",
+              results: @top_pairs %>
+        <%= render "combinations/table", title: "Ternos mais frequentes",
+              subtitle: "Top #{@limit} de #{number_with_delimiter(@triples.total_possible(containing: @filter_number))} ternos possíveis",
+              results: @top_triples %>
+      </div>
+
+      <p class="mt-3 text-xs text-gray-500">
+        Com tantas combinações possíveis, é natural que algumas apareçam bem mais que a média só por flutuação
+        aleatória — principalmente os ternos, cujas contagens são pequenas. O ranking é descritivo, não indica tendência.
+      </p>
+    </section>
+
+    <%# Repetição entre concursos consecutivos %>
+    <section class="mb-8">
+      <h2 class="mb-1 text-lg font-semibold">Repetição de dezenas entre concursos consecutivos</h2>
+
+      <% if @repetition.empty? %>
+        <p class="text-sm text-gray-600">São necessários ao menos dois concursos consecutivos no período para esta análise.</p>
+      <% else %>
+        <p class="mb-3 text-sm text-gray-600">
+          Quantas das 6 dezenas de um concurso já haviam saído no concurso imediatamente anterior
+          (<%= number_with_delimiter(@repetition.pairs_count) %> pares de concursos analisados).
+        </p>
+
+        <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div class="rounded border p-4 text-sm">
+            <div class="text-gray-500">Média de dezenas repetidas</div>
+            <div class="text-2xl font-semibold"><%= number_with_precision(@repetition.mean_repeated, precision: 2) %></div>
+          </div>
+          <div class="rounded border p-4 text-sm">
+            <div class="text-gray-500">Esperado por acaso</div>
+            <div class="text-2xl font-semibold"><%= number_with_precision(@repetition.expected_mean, precision: 2) %></div>
+          </div>
+          <div class="rounded border p-4 text-sm">
+            <div class="text-gray-500">Concursos sem nenhuma repetição</div>
+            <div class="text-2xl font-semibold"><%= percent(@repetition.distribution.first.percent) %></div>
+            <div class="text-xs text-gray-500">esperado <%= percent(@repetition.distribution.first.expected_percent) %></div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div class="rounded border p-4">
+            <h3 class="mb-3 text-sm font-semibold">Distribuição observada × esperada</h3>
+            <div class="space-y-3">
+              <% max_percent = @repetition.distribution.flat_map { |b| [ b.percent, b.expected_percent ] }.max %>
+              <% @repetition.distribution.each do |bucket| %>
+                <div>
+                  <%= horizontal_bar(label: "#{bucket.repeated} repetida#{'s' unless bucket.repeated == 1}",
+                                     value: bucket.percent, max: max_percent,
+                                     caption: "#{bucket.count} (#{percent(bucket.percent)})") %>
+                  <%= horizontal_bar(label: "esperado", value: bucket.expected_percent, max: max_percent,
+                                     caption: percent(bucket.expected_percent), color: "bg-gray-300") %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+
+          <div class="space-y-6">
+            <div class="rounded border">
+              <h3 class="border-b bg-gray-50 px-3 py-2 text-sm font-semibold">Dezenas que mais se repetiram no concurso seguinte</h3>
+              <table class="w-full text-sm">
+                <thead class="text-left text-gray-500">
+                  <tr>
+                    <th class="px-3 py-1.5">Dezena</th>
+                    <th class="px-3 py-1.5 text-right">Repetições</th>
+                    <th class="px-3 py-1.5 text-right">Oportunidades</th>
+                    <th class="px-3 py-1.5 text-right">Taxa</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y">
+                  <% @repetition.number_rates(10).each do |row| %>
+                    <tr>
+                      <td class="px-3 py-1.5 font-semibold"><%= two_digits(row.number) %></td>
+                      <td class="px-3 py-1.5 text-right tabular-nums"><%= row.repeats %></td>
+                      <td class="px-3 py-1.5 text-right tabular-nums"><%= row.opportunities %></td>
+                      <td class="px-3 py-1.5 text-right tabular-nums"><%= percent(row.rate) %></td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+              <p class="px-3 py-2 text-xs text-gray-500">Taxa = repetições ÷ vezes em que a dezena saiu no concurso anterior (esperado ≈ 10%).</p>
+            </div>
+
+            <div class="rounded border">
+              <h3 class="border-b bg-gray-50 px-3 py-2 text-sm font-semibold">Repetições mais recentes</h3>
+              <table class="w-full text-sm">
+                <thead class="text-left text-gray-500">
+                  <tr><th class="px-3 py-1.5">Concurso</th><th class="px-3 py-1.5">Repetiu do anterior</th></tr>
+                </thead>
+                <tbody class="divide-y">
+                  <% @repetition.recent(10).each do |occurrence| %>
+                    <tr>
+                      <td class="px-3 py-1.5 tabular-nums">#<%= occurrence.contest_number %> <span class="text-gray-400">← #<%= occurrence.previous_contest %></span></td>
+                      <td class="px-3 py-1.5 font-mono"><%= occurrence.repeated.map { |n| two_digits(n) }.join(" ") %></td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </section>
+
+    <p class="text-xs text-gray-500">
+      Os sorteios são independentes: as análises descrevem o histórico e não permitem prever resultados futuros.
+    </p>
+  <% end %>
+</div>
